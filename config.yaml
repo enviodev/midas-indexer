@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: mtbill-tvl
+contracts:
+    - name: MTBILL
+      handler: src/EventHandlers.ts
+      events:
+          - event: AdminChanged(address previousAdmin, address newAdmin)
+          - event: Approval(address indexed owner, address indexed spender, uint256 value)
+          - event: BeaconUpgraded(address indexed beacon)
+          - event: Initialized(uint8 version)
+          - event: Paused(address account)
+          - event: Transfer(address indexed from, address indexed to, uint256 value)
+          - event: Unpaused(address account)
+          - event: Upgraded(address indexed implementation)
+    - name: MTBILL_ORACLE
+      handler: src/EventHandlers.ts
+      events:
+          - event: AdminChanged(address previousAdmin, address newAdmin)
+          - event: AnswerUpdated(int256 indexed data, uint256 indexed roundId, uint256 indexed timestamp)
+          - event: BeaconUpgraded(address indexed beacon)
+          - event: Initialized(uint8 version)
+          - event: Upgraded(address indexed implementation)
+networks:
+    - id: 1
+      start_block: 0
+      contracts:
+          - name: MTBILL
+            address:
+                - 0xDD629E5241CbC5919847783e6C96B2De4754e438
+          - name: MTBILL_ORACLE
+            address:
+                - 0x056339C044055819E8Db84E71f5f2E1F536b2E5b
+    - id: 8453
+      start_block: 0
+      contracts:
+          - name: MTBILL
+            address:
+                - 0xDD629E5241CbC5919847783e6C96B2De4754e438
+          - name: MTBILL_ORACLE
+            address:
+                - 0x70E58b7A1c884fFFE7dbce5249337603a28b8422
+unordered_multichain_mode: true
+preload_handlers: true

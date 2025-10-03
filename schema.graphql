@@ -1,0 +1,54 @@
+
+
+type MTBILL_Transfer {
+  id: ID!
+  from: String!
+  to: String!
+  value: BigInt!
+}
+
+
+
+type MTBILL_ORACLE_AnswerUpdated {
+  id: ID!
+  data: BigInt!
+  roundId: BigInt!
+  timestamp: BigInt!
+}
+
+type CurrentSupply {
+  id: ID!
+  totalSupply: BigInt!
+  usdValue: BigInt!
+  price: BigInt!
+  lastUpdated: BigInt!
+}
+
+type DailySnapshot {
+  id: ID!
+  date: String!
+  totalSupply: BigInt!
+  usdValue: BigInt!
+  price: BigInt!
+  timestamp: BigInt!
+}
+
+type MonthlySnapshot {
+  id: ID!
+  year: Int!
+  month: Int!
+  totalSupply: BigInt!
+  usdValue: BigInt!
+  price: BigInt!
+  timestamp: BigInt!
+}
+
+type QuarterlySnapshot {
+  id: ID!
+  year: Int!
+  quarter: Int!
+  totalSupply: BigInt!
+  usdValue: BigInt!
+  price: BigInt!
+  timestamp: BigInt!
+}
