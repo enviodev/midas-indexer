@@ -1,4 +1,4 @@
-// App.jsx
+// App.jsx (updated legend section + styling)
 import React, { useEffect, useState } from "react";
 import {
     LineChart,
@@ -7,47 +7,50 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
 } from "recharts";
 
 const GRAPHQL_ENDPOINT = "http://localhost:8080/v1/graphql";
 const CHAIN_IDS = ["1", "8453", "23294", "98866", "30", "42793"];
 
-const SNAPSHOT_QUERY = (chainId) => `
-query DailySnapshotQuery {
-  DailySnapshot(where: {chainId: {_eq: "${chainId}"}}, order_by: {date: asc}) {
-    chainId
-    date
-    usdValue
-    price
-    normalizedTotalSupply
-  }
-}
-`;
+// 👇 Add your chain names here
+const CHAIN_NAMES = {
+    1: "Ethereum",
+    8453: "Base",
+    23294: "Oasis",
+    98866: "Plume",
+    30: "Rootstock",
+    42793: "Etherlink",
+};
 
-const AGG_QUERY = `
-query AggQuery {
-  AggCurrentSupply {
-    price
-    normalizedTotalSupply
-    totalSupply
-    usdValue
-    lastUpdated
-  }
-}
-`;
+// consistent color palette
+const CHAIN_COLORS = [
+    "#3b82f6", // blue
+    "#10b981", // green
+    "#f59e0b", // amber
+    "#ef4444", // red
+    "#8b5cf6", // purple
+    "#14b8a6", // teal
+];
 
 function App() {
     const [dailyData, setDailyData] = useState({});
     const [aggData, setAggData] = useState(null);
 
     useEffect(() => {
-        // Fetch aggregate data
         fetch(GRAPHQL_ENDPOINT, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: AGG_QUERY }),
+            body: JSON.stringify({
+                query: `
+                query {
+                    AggCurrentSupply {
+                        price
+                        normalizedTotalSupply
+                        usdValue
+                    }
+                }`,
+            }),
         })
             .then((res) => res.json())
             .then((result) => {
@@ -61,65 +64,36 @@ function App() {
     useEffect(() => {
         const fetchSnapshots = async () => {
             const allData = {};
-
             for (let chainId of CHAIN_IDS) {
                 try {
                     const res = await fetch(GRAPHQL_ENDPOINT, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                            query: SNAPSHOT_QUERY(chainId),
+                            query: `
+                            query {
+                                DailySnapshot(where: {chainId: {_eq: "${chainId}"}}, order_by: {date: asc}) {
+                                    chainId
+                                    date
+                                    usdValue
+                                    price
+                                    normalizedTotalSupply
+                                }
+                            }`,
                         }),
                     });
                     const result = await res.json();
                     const snapshots = result.data?.DailySnapshot || [];
-
-                    if (snapshots.length === 0) {
-                        allData[chainId] = [];
-                        continue;
-                    }
-
-                    const filledData = [];
-                    let lastSnapshot = null;
-                    const startDate = new Date(snapshots[0].date);
-                    const endDate = new Date(
-                        snapshots[snapshots.length - 1].date
-                    );
-
-                    for (
-                        let d = new Date(startDate);
-                        d <= endDate;
-                        d.setDate(d.getDate() + 1)
-                    ) {
-                        const dateStr = d.toISOString().split("T")[0];
-                        const snap = snapshots.find((s) => s.date === dateStr);
-                        if (snap) lastSnapshot = snap;
-
-                        if (lastSnapshot) {
-                            filledData.push({
-                                date: dateStr,
-                                usdValue: parseFloat(lastSnapshot.usdValue),
-                                price: parseFloat(lastSnapshot.price),
-                                normalizedTotalSupply: parseFloat(
-                                    lastSnapshot.normalizedTotalSupply
-                                ),
-                            });
-                        }
-                    }
-
-                    allData[chainId] = filledData;
+                    allData[chainId] = snapshots.map((s) => ({
+                        date: s.date,
+                        usdValue: parseFloat(s.usdValue),
+                    }));
                 } catch (err) {
-                    console.error(
-                        `Error fetching snapshots for chain ${chainId}:`,
-                        err
-                    );
-                    allData[chainId] = [];
+                    console.error(`Error fetching chain ${chainId}`, err);
                 }
             }
-
             setDailyData(allData);
         };
-
         fetchSnapshots();
     }, []);
 
@@ -128,14 +102,13 @@ function App() {
         Object.values(dailyData).forEach((chain) =>
             chain.forEach((item) => allDates.add(item.date))
         );
-
         const sortedDates = Array.from(allDates).sort();
 
         return sortedDates.map((date) => {
             const point = { date };
             Object.keys(dailyData).forEach((chainId) => {
-                const dayData = dailyData[chainId].find((d) => d.date === date);
-                point[`chain-${chainId}`] = dayData ? dayData.usdValue : null;
+                const d = dailyData[chainId].find((x) => x.date === date);
+                point[`chain-${chainId}`] = d ? d.usdValue : null;
             });
             return point;
         });
@@ -145,130 +118,148 @@ function App() {
         const d = new Date(dateStr);
         return d.toLocaleDateString("en-US", {
             month: "short",
-            day: "numeric",
+            year: "2-digit",
         });
+    };
+
+    const formatUSD = (v) => {
+        if (!v && v !== 0) return "";
+        if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+        if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
+        return `$${v.toFixed(2)}`;
     };
 
     return (
         <div
             style={{
-                padding: "30px",
-                fontFamily: "Arial, sans-serif",
-                background: "#f5f5f5",
+                minHeight: "100vh",
+                background: "#f0f5f9",
+                padding: "40px",
+                fontFamily: "Inter, sans-serif",
             }}
         >
-            <h1
+            <div
                 style={{
-                    textAlign: "center",
-                    marginBottom: "20px",
-                    color: "#333",
+                    maxWidth: "1000px",
+                    margin: "0 auto",
+                    background: "#fff",
+                    borderRadius: "20px",
+                    padding: "30px",
+                    boxShadow: "0 6px 12px rgba(0,0,0,0.05)",
                 }}
             >
-                mTBILL Token Info
-            </h1>
+                {aggData && (
+                    <div style={{ marginBottom: "15px" }}>
+                        <h2
+                            style={{
+                                fontSize: "22px",
+                                fontWeight: 700,
+                                color: "#111827",
+                            }}
+                        >
+                            mTBILL NAV {formatUSD(parseFloat(aggData.usdValue))}
+                        </h2>
+                        <p
+                            style={{
+                                color: "#6b7280",
+                                fontSize: "15px",
+                                marginTop: "4px",
+                            }}
+                        >
+                            {parseFloat(
+                                aggData.normalizedTotalSupply
+                            ).toLocaleString()}{" "}
+                            tokens at ${parseFloat(aggData.price).toFixed(2)}{" "}
+                            price
+                        </p>
+                    </div>
+                )}
 
-            {aggData && (
+                {/* Top-left colored chain labels */}
                 <div
                     style={{
                         display: "flex",
-                        gap: "20px",
-                        justifyContent: "center",
-                        marginBottom: "40px",
+                        flexWrap: "wrap",
+                        gap: "12px",
+                        marginBottom: "20px",
                     }}
                 >
-                    <div
-                        style={{
-                            background: "#fff",
-                            padding: "20px",
-                            borderRadius: "10px",
-                            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                            minWidth: "150px",
-                        }}
-                    >
-                        <h4>USD Value</h4>
-                        <p style={{ fontSize: "18px", fontWeight: "bold" }}>
-                            ${parseFloat(aggData.usdValue).toLocaleString()}
-                        </p>
-                    </div>
-                    <div
-                        style={{
-                            background: "#fff",
-                            padding: "20px",
-                            borderRadius: "10px",
-                            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                            minWidth: "150px",
-                        }}
-                    >
-                        <h4>Price</h4>
-                        <p style={{ fontSize: "18px", fontWeight: "bold" }}>
-                            ${parseFloat(aggData.price).toFixed(4)}
-                        </p>
-                    </div>
-                    <div
-                        style={{
-                            background: "#fff",
-                            padding: "20px",
-                            borderRadius: "10px",
-                            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                            minWidth: "180px",
-                        }}
-                    >
-                        <h4>Normalized Supply</h4>
-                        <p style={{ fontSize: "18px", fontWeight: "bold" }}>
-                            {parseFloat(
-                                aggData.normalizedTotalSupply
-                            ).toLocaleString()}
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            <div
-                style={{
-                    width: "100%",
-                    height: 500,
-                    background: "#fff",
-                    padding: "20px",
-                    borderRadius: "10px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                }}
-            >
-                <ResponsiveContainer>
-                    <LineChart data={chartData()}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                            dataKey="date"
-                            tickFormatter={formatDate}
-                            stroke="#555"
-                        />
-                        <YAxis stroke="#555" />
-                        <Tooltip
-                            formatter={(value) =>
-                                value ? value.toLocaleString() : "N/A"
-                            }
-                        />
-                        <Legend />
-                        {CHAIN_IDS.map((chainId, idx) => (
-                            <Line
-                                key={chainId}
-                                type="monotone"
-                                dataKey={`chain-${chainId}`}
-                                stroke={
-                                    [
-                                        "#8884d8",
-                                        "#82ca9d",
-                                        "#ffc658",
-                                        "#ff7300",
-                                        "#00c49f",
-                                        "#a4de6c",
-                                    ][idx]
-                                }
-                                name={`Chain ${chainId}`}
-                                connectNulls={true}
+                    {CHAIN_IDS.map((id, i) => (
+                        <div
+                            key={id}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "10px",
+                                    height: "10px",
+                                    borderRadius: "50%",
+                                    backgroundColor: CHAIN_COLORS[i],
+                                }}
                             />
-                        ))}
-                    </LineChart>
-                </ResponsiveContainer>
+                            <span
+                                style={{
+                                    fontSize: "14px",
+                                    color: "#374151",
+                                    fontWeight: 500,
+                                }}
+                            >
+                                {CHAIN_NAMES[id] || `Chain ${id}`}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ width: "100%", height: 450 }}>
+                    <ResponsiveContainer>
+                        <LineChart data={chartData()}>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e5e7eb"
+                            />
+                            <XAxis
+                                dataKey="date"
+                                tickFormatter={formatDate}
+                                stroke="#6b7280"
+                                interval="preserveStartEnd"
+                            />
+                            <YAxis
+                                stroke="#6b7280"
+                                tickFormatter={(v) => formatUSD(v)}
+                            />
+                            <Tooltip
+                                formatter={(value, name) => [
+                                    formatUSD(value),
+                                    CHAIN_NAMES[name.split("-")[1]] || name,
+                                ]}
+                                labelFormatter={(label) =>
+                                    new Date(label).toDateString()
+                                }
+                                contentStyle={{
+                                    background: "#fff",
+                                    borderRadius: "10px",
+                                    border: "1px solid #ddd",
+                                }}
+                            />
+                            {CHAIN_IDS.map((chainId, idx) => (
+                                <Line
+                                    key={chainId}
+                                    type="monotone"
+                                    dataKey={`chain-${chainId}`}
+                                    stroke={CHAIN_COLORS[idx]}
+                                    strokeWidth={2.2}
+                                    dot={false}
+                                    connectNulls={true}
+                                    name={`chain-${chainId}`}
+                                />
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );
