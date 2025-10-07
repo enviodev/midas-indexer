@@ -1,4 +1,4 @@
-// App.jsx (updated legend section + styling)
+// App.jsx — Dynamic symbol selection + auto chain legend + dynamic colors
 import React, { useEffect, useState } from "react";
 import {
     LineChart,
@@ -11,9 +11,8 @@ import {
 } from "recharts";
 
 const GRAPHQL_ENDPOINT = "http://localhost:8080/v1/graphql";
-const CHAIN_IDS = ["1", "8453", "23294", "98866", "30", "42793"];
 
-// 👇 Add your chain names here
+// Chain name mapping
 const CHAIN_NAMES = {
     1: "Ethereum",
     8453: "Base",
@@ -23,7 +22,7 @@ const CHAIN_NAMES = {
     42793: "Etherlink",
 };
 
-// consistent color palette
+// Color palette (cycled)
 const CHAIN_COLORS = [
     "#3b82f6", // blue
     "#10b981", // green
@@ -31,12 +30,20 @@ const CHAIN_COLORS = [
     "#ef4444", // red
     "#8b5cf6", // purple
     "#14b8a6", // teal
+    "#ec4899", // pink
+    "#6366f1", // indigo
+    "#84cc16", // lime
+    "#f97316", // orange
 ];
 
 function App() {
-    const [dailyData, setDailyData] = useState({});
+    const [symbols, setSymbols] = useState([]); // all available symbols
+    const [selectedSymbol, setSelectedSymbol] = useState("");
     const [aggData, setAggData] = useState(null);
+    const [dailyData, setDailyData] = useState({});
+    const [chainIds, setChainIds] = useState([]);
 
+    // Fetch all symbols for dropdown
     useEffect(() => {
         fetch(GRAPHQL_ENDPOINT, {
             method: "POST",
@@ -45,9 +52,36 @@ function App() {
                 query: `
                 query {
                     AggCurrentSupply {
+                        symbol
+                    }
+                }`,
+            }),
+        })
+            .then((res) => res.json())
+            .then((result) => {
+                const list =
+                    result.data?.AggCurrentSupply?.map((d) => d.symbol) || [];
+                setSymbols(list);
+                if (list.length > 0) setSelectedSymbol(list[0]);
+            })
+            .catch(console.error);
+    }, []);
+
+    // Fetch AggCurrentSupply for selected symbol
+    useEffect(() => {
+        if (!selectedSymbol) return;
+
+        fetch(GRAPHQL_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                query: `
+                query {
+                    AggCurrentSupply(where: {symbol: {_eq: "${selectedSymbol}"}}) {
                         price
                         normalizedTotalSupply
                         usdValue
+                        symbol
                     }
                 }`,
             }),
@@ -59,61 +93,70 @@ function App() {
                 }
             })
             .catch(console.error);
-    }, []);
+    }, [selectedSymbol]);
 
+    // Fetch all DailySnapshots for the selected symbol (then split by chain)
     useEffect(() => {
+        if (!selectedSymbol) return;
+
         const fetchSnapshots = async () => {
-            const allData = {};
-            for (let chainId of CHAIN_IDS) {
-                try {
-                    const res = await fetch(GRAPHQL_ENDPOINT, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            query: `
-                            query {
-                                DailySnapshot(where: {chainId: {_eq: "${chainId}"}}, order_by: {date: asc}) {
-                                    chainId
-                                    date
-                                    usdValue
-                                    price
-                                    normalizedTotalSupply
-                                }
-                            }`,
-                        }),
-                    });
-                    const result = await res.json();
-                    const snapshots = result.data?.DailySnapshot || [];
-                    allData[chainId] = snapshots.map((s) => ({
+            try {
+                const res = await fetch(GRAPHQL_ENDPOINT, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        query: `
+                        query {
+                            DailySnapshot(where: {symbol: {_eq: "${selectedSymbol}"}}, order_by: {date: asc}) {
+                                chainId
+                                date
+                                usdValue
+                            }
+                        }`,
+                    }),
+                });
+                const result = await res.json();
+                const snapshots = result.data?.DailySnapshot || [];
+
+                // Group by chainId
+                const grouped = {};
+                snapshots.forEach((s) => {
+                    if (!grouped[s.chainId]) grouped[s.chainId] = [];
+                    grouped[s.chainId].push({
                         date: s.date,
                         usdValue: parseFloat(s.usdValue),
-                    }));
-                } catch (err) {
-                    console.error(`Error fetching chain ${chainId}`, err);
-                }
-            }
-            setDailyData(allData);
-        };
-        fetchSnapshots();
-    }, []);
+                    });
+                });
 
+                setDailyData(grouped);
+                setChainIds(Object.keys(grouped));
+            } catch (err) {
+                console.error("Error fetching DailySnapshot:", err);
+            }
+        };
+
+        fetchSnapshots();
+    }, [selectedSymbol]);
+
+    // Build chart data across all chain IDs
     const chartData = () => {
         const allDates = new Set();
-        Object.values(dailyData).forEach((chain) =>
-            chain.forEach((item) => allDates.add(item.date))
+        Object.values(dailyData).forEach((arr) =>
+            arr.forEach((item) => allDates.add(item.date))
         );
         const sortedDates = Array.from(allDates).sort();
 
         return sortedDates.map((date) => {
             const point = { date };
-            Object.keys(dailyData).forEach((chainId) => {
-                const d = dailyData[chainId].find((x) => x.date === date);
+            chainIds.forEach((chainId) => {
+                const d = dailyData[chainId]?.find((x) => x.date === date);
                 point[`chain-${chainId}`] = d ? d.usdValue : null;
             });
             return point;
         });
     };
 
+    // Helpers
     const formatDate = (dateStr) => {
         const d = new Date(dateStr);
         return d.toLocaleDateString("en-US", {
@@ -148,6 +191,37 @@ function App() {
                     boxShadow: "0 6px 12px rgba(0,0,0,0.05)",
                 }}
             >
+                {/* Symbol Selector */}
+                <div style={{ marginBottom: "25px" }}>
+                    <label
+                        style={{
+                            fontSize: "16px",
+                            fontWeight: 600,
+                            color: "#111827",
+                            marginRight: "10px",
+                        }}
+                    >
+                        Select Symbol:
+                    </label>
+                    <select
+                        value={selectedSymbol}
+                        onChange={(e) => setSelectedSymbol(e.target.value)}
+                        style={{
+                            padding: "8px 12px",
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "15px",
+                        }}
+                    >
+                        {symbols.map((sym) => (
+                            <option key={sym} value={sym}>
+                                {sym}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Aggregated Data */}
                 {aggData && (
                     <div style={{ marginBottom: "15px" }}>
                         <h2
@@ -157,7 +231,8 @@ function App() {
                                 color: "#111827",
                             }}
                         >
-                            mTBILL NAV {formatUSD(parseFloat(aggData.usdValue))}
+                            {aggData.symbol} NAV{" "}
+                            {formatUSD(parseFloat(aggData.usdValue))}
                         </h2>
                         <p
                             style={{
@@ -175,7 +250,7 @@ function App() {
                     </div>
                 )}
 
-                {/* Top-left colored chain labels */}
+                {/* Dynamic Chain Legend */}
                 <div
                     style={{
                         display: "flex",
@@ -184,7 +259,7 @@ function App() {
                         marginBottom: "20px",
                     }}
                 >
-                    {CHAIN_IDS.map((id, i) => (
+                    {chainIds.map((id, i) => (
                         <div
                             key={id}
                             style={{
@@ -198,7 +273,8 @@ function App() {
                                     width: "10px",
                                     height: "10px",
                                     borderRadius: "50%",
-                                    backgroundColor: CHAIN_COLORS[i],
+                                    backgroundColor:
+                                        CHAIN_COLORS[i % CHAIN_COLORS.length],
                                 }}
                             />
                             <span
@@ -214,6 +290,7 @@ function App() {
                     ))}
                 </div>
 
+                {/* Chart */}
                 <div style={{ width: "100%", height: 450 }}>
                     <ResponsiveContainer>
                         <LineChart data={chartData()}>
@@ -227,10 +304,7 @@ function App() {
                                 stroke="#6b7280"
                                 interval="preserveStartEnd"
                             />
-                            <YAxis
-                                stroke="#6b7280"
-                                tickFormatter={(v) => formatUSD(v)}
-                            />
+                            <YAxis stroke="#6b7280" tickFormatter={formatUSD} />
                             <Tooltip
                                 formatter={(value, name) => [
                                     formatUSD(value),
@@ -245,12 +319,14 @@ function App() {
                                     border: "1px solid #ddd",
                                 }}
                             />
-                            {CHAIN_IDS.map((chainId, idx) => (
+                            {chainIds.map((chainId, idx) => (
                                 <Line
                                     key={chainId}
                                     type="monotone"
                                     dataKey={`chain-${chainId}`}
-                                    stroke={CHAIN_COLORS[idx]}
+                                    stroke={
+                                        CHAIN_COLORS[idx % CHAIN_COLORS.length]
+                                    }
                                     strokeWidth={2.2}
                                     dot={false}
                                     connectNulls={true}

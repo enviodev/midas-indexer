@@ -1,99 +1,50 @@
-type MTBILL_Transfer {
+type CustomOracle {
     id: ID!
-    from: String!
-    to: String!
-    value: BigInt!
-}
-
-type MTBILL_ORACLE_AnswerUpdated {
-    id: ID!
-    data: BigInt!
-    roundId: BigInt!
-    timestamp: BigInt!
+    address: String!
+    price: Float!
+    lastUpdated: BigInt!
 }
 
 type AggCurrentSupply {
     id: ID!
+    symbol: String!
     totalSupply: BigInt!
     normalizedTotalSupply: Float!
-    usdValue:Float! 
+    usdValue: Float!
     price: Float!
     lastUpdated: BigInt!
 }
 
 type CurrentSupply {
     id: ID!
+    symbol: String!
     totalSupply: BigInt!
     normalizedTotalSupply: Float!
-    usdValue:Float!
-    price: Float! 
+    usdValue: Float!
+    price: Float!
     lastUpdated: BigInt!
     chainId: String!
 }
 
 type AggDailySnapshot {
     id: ID!
+    symbol: String!
     date: String!
     totalSupply: BigInt!
     normalizedTotalSupply: Float!
-    usdValue:Float! # use BigInt
-    price: Float! # use BigInt
+    usdValue: Float!
+    price: Float!
     timestamp: BigInt!
 }
 
 type DailySnapshot {
     id: ID!
+    symbol: String!
     date: String!
     totalSupply: BigInt!
     normalizedTotalSupply: Float!
-    usdValue:Float! # use BigInt
-    price: Float! # use BigInt
-    timestamp: BigInt!
-    chainId: String!
-}
-
-type AggMonthlySnapshot {
-    id: ID!
-    year: Int!
-    month: Int!
-    totalSupply: BigInt!
-    normalizedTotalSupply: Float!
-    usdValue:Float! # use BigInt
-    price: Float! # use BigInt
-    timestamp: BigInt!
-}
-
-type MonthlySnapshot {
-    id: ID!
-    year: Int!
-    month: Int!
-    totalSupply: BigInt!
-    normalizedTotalSupply: Float!
-    usdValue:Float! # use BigInt
-    price: Float! # use BigInt
-    timestamp: BigInt!
-    chainId: String!
-}
-
-type AggQuarterlySnapshot {
-    id: ID!
-    year: Int!
-    quarter: Int!
-    totalSupply: BigInt!
-    normalizedTotalSupply: Float!
-    usdValue:Float! # use BigInt
-    price: Float! # use BigInt
-    timestamp: BigInt!
-}
-
-type QuarterlySnapshot {
-    id: ID!
-    year: Int!
-    quarter: Int!
-    totalSupply: BigInt!
-    normalizedTotalSupply: Float!
-    usdValue:Float! # use BigInt
-    price: Float! # use BigInt
+    usdValue: Float!
+    price: Float!
     timestamp: BigInt!
     chainId: String!
 }
