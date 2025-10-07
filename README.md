@@ -3,7 +3,7 @@
 
 The **Midas Indexer** tracks the **Net Asset Value (NAV)** of `mTBILL` tokens by using  **Envio** to index blockchain data and **React** to visualize it in an interactive web interface.
 
-![Midas Indexer Web App](assets/image.png)
+![Midas Indexer Web App](assets/localhost_3000_.png)
 
 ---
 
