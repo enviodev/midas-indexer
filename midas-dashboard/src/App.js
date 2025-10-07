@@ -10,7 +10,7 @@ import {
     ResponsiveContainer,
 } from "recharts";
 
-const GRAPHQL_ENDPOINT = "http://localhost:8080/v1/graphql";
+const GRAPHQL_ENDPOINT = "https://indexer.dev.hyperindex.xyz/b440b06/v1/graphql";
 
 const CHAIN_NAMES = {
     1: "Ethereum",
