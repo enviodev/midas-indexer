@@ -164,7 +164,7 @@ const DETAILS: Record<
     },
   },
   "0x0c78Ca789e826fE339dE61934896F5D170b66d78-98866": {
-    name: "mMEV",
+    name: "mBASIS",
     decimal: 18,
     oracle: {
       address: "0x01D169AAB1aB4239D5cE491860a65Ba832F72ef2",
@@ -189,7 +189,7 @@ const DETAILS: Record<
   },
   "0x9FB442d6B612a6dcD2acC67bb53771eF1D9F661A-1": {
     name: "mRe7BTC",
-    decimal: 8,
+    decimal: 18,
     oracle: {
       address: "0x9de073685AEb382B7c6Dd0FB93fa0AEF80eB8967",
       decimal: 8,
