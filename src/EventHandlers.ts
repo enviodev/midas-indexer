@@ -1,12 +1,7 @@
 /*
  * Please refer to https://docs.envio.dev for a thorough guide on all Envio indexer features
  */
-import {
-  AggregatedOracles,
-  ChainLinkOracles,
-  Mtokens,
-  ScribeOracles,
-} from "generated";
+import { indexer } from "envio";
 
 /* ============================
    Config for decimals per chain
@@ -272,7 +267,9 @@ const DETAILS: Record<
 /* ============================
    Transfer Handler
    ============================ */
-Mtokens.Transfer.handler(async ({ event, context }) => {
+indexer.onEvent(
+  { contract: "Mtokens", event: "Transfer" },
+  async ({ event, context }) => {
   const { from, to, value } = event.params;
   const contractAddress = event.srcAddress;
   const chainId = event.chainId.toString();
@@ -375,7 +372,8 @@ Mtokens.Transfer.handler(async ({ event, context }) => {
     price: agg.price,
     timestamp: BigInt(timestamp),
   });
-});
+}
+);
 
 /* ============================
    Oracle AnswerUpdated Handler
@@ -403,7 +401,8 @@ const RELATED_ORACLES: Record<string, { relatedCustomOracle: string }> = {
 // ----------------------------------------------------
 // 1️⃣ ChainLinkOracles (standard feed handler)
 // ----------------------------------------------------
-ChainLinkOracles.AnswerUpdated.handler(
+indexer.onEvent(
+  { contract: "ChainLinkOracles", event: "AnswerUpdated" },
   async ({ event, context }) => {
     const { data } = event.params;
     const oracleAddress = event.srcAddress;
@@ -521,13 +520,14 @@ ChainLinkOracles.AnswerUpdated.handler(
       price,
       timestamp: BigInt(timestamp),
     });
-  },
+  }
 );
 
 // ----------------------------------------------------
 // 2️⃣ ChainLinkOracle2 (custom oracle handler)
 // ----------------------------------------------------
-AggregatedOracles.AnswerUpdated.handler(
+indexer.onEvent(
+  { contract: "AggregatedOracles", event: "AnswerUpdated" },
   async ({ event, context }) => {
     const { current } = event.params;
     const oracleAddress = event.srcAddress;
@@ -543,10 +543,12 @@ AggregatedOracles.AnswerUpdated.handler(
       price,
       lastUpdated: BigInt(event.block.timestamp),
     });
-  },
+  }
 );
 
-ScribeOracles.Poked.handler(async ({ event, context }) => {
+indexer.onEvent(
+  { contract: "ScribeOracles", event: "Poked" },
+  async ({ event, context }) => {
   const { val } = event.params;
   const oracleAddress = event.srcAddress;
   const chainId = event.chainId.toString();
@@ -636,4 +638,5 @@ ScribeOracles.Poked.handler(async ({ event, context }) => {
     price,
     timestamp: BigInt(timestamp),
   });
-});
+}
+);

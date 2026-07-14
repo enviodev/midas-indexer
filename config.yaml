@@ -26,7 +26,7 @@ contracts:
           - event: AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 updatedAt)
 
 
-networks:
+chains:
     - id: 1 # Ethereum
       start_block: 0
       contracts:
@@ -165,5 +165,4 @@ networks:
     #             - 0xFF64785Ee22D764F8E79812102d3Fa7f2d3437Af
 
 # unordered_multichain_mode: true
-preload_handlers: true
 raw_events: true

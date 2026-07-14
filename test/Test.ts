@@ -1,10 +1,5 @@
 import assert from "assert";
-import { 
-  TestHelpers,
-  MTBILL_Transfer,
-  MTBILL_ORACLE_AnswerUpdated,
-  CurrentSupply
-} from "generated";
+import { TestHelpers, MTBILL_Transfer, MTBILL_ORACLE_AnswerUpdated, CurrentSupply } from "envio";
 const { MockDb, MTBILL, MTBILL_ORACLE } = TestHelpers;
 
 describe("MTBILL contract Transfer event tests", () => {
